@@ -7,6 +7,7 @@ interface StateHook<StateType> {
 
 export interface ImageCollectionContext extends ImageCollectionProps {
   imageStore: StateHook<ImageList>;
+  isFileReading: StateHook<boolean>;
 }
 
 export type ImageCollectionType = ImageCollectionContext | null;
@@ -25,4 +26,8 @@ export interface ImageCollectionProps {
    * Number of megabayts of the image file
    */
   maxFileSize: number;
+}
+
+export interface FileInputProps {
+  type: "insert" | "update";
 }

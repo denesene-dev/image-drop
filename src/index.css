@@ -16,3 +16,7 @@
 code {
     @apply bg-amber-100 px-2 py-0.5 rounded text-amber-950 tracking-wide font-bold;
 }
+
+.list-item {
+    @apply grid grid-cols-[75px_1fr] gap-6 items-center py-4 px-2;
+}
