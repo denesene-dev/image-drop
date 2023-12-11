@@ -186,7 +186,8 @@ const ListItem = ({ data }: { data: ImageListItem }) => {
       break;
   }
 
-  const removeItem = () => {
+  const removeItem = (e: any) => {
+    e.stopPropagation();
     context.imageStore.setter((previousState) =>
       previousState.filter((item) => item._id !== data._id)
     );
@@ -207,7 +208,7 @@ const ListItem = ({ data }: { data: ImageListItem }) => {
               color="danger"
               variant="ghost"
               className="absolute top-2/4 right-0 -translate-y-2/4"
-              onPress={removeItem}
+              onClick={removeItem}
               isIconOnly
             >
               <FiTrash2 size={20} />

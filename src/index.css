@@ -1,38 +1,42 @@
-@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Urbanist:wght@700&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
 .wrapper {
-    @apply max-w-xl mx-auto mt-20;
+  @apply w-full mt-20;
 }
 
 .wrapper > * {
-    font-family: 'Urbanist', sans-serif!important;
-    font-weight: 700!important;
+  font-family: "Urbanist", sans-serif !important;
+  font-weight: 700 !important;
 }
 
 code {
-    @apply bg-amber-100 px-2 py-0.5 rounded text-amber-950 tracking-wide font-bold;
+  @apply bg-amber-100 px-2 py-0.5 rounded text-amber-950 tracking-wide font-bold;
 }
 
 .list-item {
-    @apply grid grid-cols-[75px_1fr] gap-6 items-center py-4 px-2 transition-all rounded-xl my-2;
+  @apply grid grid-cols-[75px_1fr] gap-6 items-center py-4 px-2 transition-all rounded-xl my-2;
 }
 
 .list-item.fetching {
-    @apply scale-95 opacity-40 pointer-events-none select-none;
+  @apply scale-95 opacity-40 pointer-events-none select-none;
 }
 
 .imx-subheading {
-    @apply px-3 text-xs tracking-widest font-bold text-stone-800 bg-white relative z-10 inline-block;
+  @apply px-3 text-xs tracking-widest font-bold text-stone-800 bg-white relative z-10 inline-block;
 }
 
 .imx-line {
-    @apply w-full absolute top-1/2 -translate-y-2/4 left-0 h-[1px] bg-gray-300;
+  @apply w-full absolute top-1/2 -translate-y-2/4 left-0 h-[1px] bg-gray-300;
 }
 
 .imx-disable {
-    @apply pointer-events-none select-none opacity-40;
+  @apply pointer-events-none select-none opacity-40;
 }

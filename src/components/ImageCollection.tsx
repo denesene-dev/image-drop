@@ -37,7 +37,7 @@ export default function ImageCollection({
 
   return (
     <ImgCollectionCtx.Provider value={imgInitialContext}>
-      <Card className="relative mx-3 md:mx-0 group" shadow="none">
+      <Card className="relative mx-auto max-w-5xl group px-2" shadow="none">
         {!isImageUploaded && <FileInput type="update" />}
         <CardBody
           className="rounded-2xl"
