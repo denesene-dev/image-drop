@@ -1,8 +1,6 @@
 import { createContext, useState } from "react";
-
 // Card components
 import { Card, CardBody } from "@nextui-org/react";
-
 // Import types..
 import type {
   ImageCollectionProps,
@@ -10,13 +8,15 @@ import type {
   ImageCollectionType,
   ImageList,
 } from "../types";
-
 // Icons
 import { FileInput, ListView, NoImageView } from "./IMX-Pieces";
 
 export const ImgCollectionCtx = createContext<ImageCollectionType>(null);
 
-export default function ImageCollection({ maxFileSize }: ImageCollectionProps) {
+export default function ImageCollection({
+  maxFileSize,
+  contextString,
+}: ImageCollectionProps) {
   const [imageList, setImageList] = useState<ImageList>([]);
   const [loadingState, setLoadingState] = useState(false);
 
@@ -24,23 +24,21 @@ export default function ImageCollection({ maxFileSize }: ImageCollectionProps) {
 
   const imgInitialContext: ImageCollectionContext = {
     maxFileSize: maxFileSize,
-
     imageStore: {
       getter: imageList,
       setter: setImageList,
     },
-
-    isFileReading: {
+    loadingState: {
       getter: loadingState,
       setter: setLoadingState,
     },
+    contextString,
   };
 
   return (
     <ImgCollectionCtx.Provider value={imgInitialContext}>
-      <Card className="relative mx-3 md:mx-0 group">
+      <Card className="relative mx-3 md:mx-0 group" shadow="none">
         {!isImageUploaded && <FileInput type="update" />}
-
         <CardBody
           className="rounded-2xl"
           style={{

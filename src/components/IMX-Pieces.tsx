@@ -8,7 +8,13 @@ import animationData from "./../Animation.json";
 import Lottie from "lottie-react";
 
 // Import types..
-import type { ImageList, ImageListItem, FileInputProps } from "../types";
+import type {
+  ImageList,
+  ImageListItem,
+  FileInputProps,
+  Base64Response,
+  FileUploadState,
+} from "../types";
 
 import type { ChangeEvent } from "react";
 
@@ -18,7 +24,7 @@ import { HiOutlineCloudUpload } from "react-icons/hi";
 import { FiTrash2 } from "react-icons/fi";
 import { LuFilePlus2 } from "react-icons/lu";
 import { ImgCollectionCtx } from "./ImageCollection";
-import { filesize, limitString, uuidv4 } from "../helper-functions";
+import { filesize, limitString, sleep, uuidv4 } from "../helper-functions";
 
 const LoadingView = ({ stackCount }: { stackCount: number }) =>
   Array.from({ length: stackCount }, (_, i) => (
@@ -61,9 +67,9 @@ export const FileInput = ({ type }: FileInputProps) => {
       const errMsg = "Resim yüklenirken beklenmedik bir sorun oluştu.";
 
       if (context !== null && files !== null) {
-        const { maxFileSize, imageStore, isFileReading } = context;
+        const { maxFileSize, imageStore, loadingState } = context;
 
-        isFileReading.setter(true);
+        loadingState.setter(true);
 
         const result = await Promise.all(
           Array.from(files).map(async (file) => {
@@ -71,25 +77,41 @@ export const FileInput = ({ type }: FileInputProps) => {
 
             const reader = new FileReader();
 
-            const loadImage = (): Promise<string> =>
-              new Promise((resolve, reject) => {
-                reader.onload = (event) => {
-                  const dataURL = event.target?.result as string;
-                  dataURL ? resolve(dataURL) : reject(new Error(errMsg));
+            const loadImage = (): Promise<Base64Response> => {
+              return new Promise((resolve, reject) => {
+                reader.onload = () => {
+                  const base64String = reader.result as string;
+                  const base64Content = base64String.split(",")[1]; // Extracting only the base64 string
+
+                  base64Content
+                    ? resolve({ base64String, base64Content })
+                    : reject(new Error(errMsg));
                 };
 
                 reader.onerror = () => reject(errMsg);
                 reader.readAsDataURL(file);
               });
+            };
 
             try {
-              const tempUrl = await loadImage();
+              const { base64String, base64Content } = await loadImage();
               const genRandId = uuidv4();
+
               return {
                 _id: genRandId,
                 name: file.name,
                 size: file.size,
-                tempUrl,
+                tempUrl: base64String,
+                base64: base64Content,
+                isUploaded: "inqueue",
+
+                [context.contextString]: async () => {
+                  return await sleep({
+                    base64: base64Content,
+                    context: Symbol.keyFor(context.contextString) as string,
+                    name: file.name,
+                  });
+                },
               };
             } catch (e) {
               if (e instanceof Error) {
@@ -102,7 +124,7 @@ export const FileInput = ({ type }: FileInputProps) => {
               return null;
             }
           })
-        ).finally(() => isFileReading.setter(false));
+        ).finally(() => loadingState.setter(false));
 
         const filteredResult = result.filter(
           (item) => item !== null
@@ -153,6 +175,17 @@ const ListItem = ({ data }: { data: ImageListItem }) => {
   const context = useContext(ImgCollectionCtx);
   if (context === null) return null;
 
+  let style = "list-item";
+  switch (data.isUploaded) {
+    case "uploading":
+      style += " scale-95 opacity-40 pointer-events-none select-none";
+      break;
+
+    case "uploaded":
+      style += " bg-green-200 border-green-700";
+      break;
+  }
+
   const removeItem = () => {
     context.imageStore.setter((previousState) =>
       previousState.filter((item) => item._id !== data._id)
@@ -160,7 +193,7 @@ const ListItem = ({ data }: { data: ImageListItem }) => {
   };
 
   return (
-    <div className="list-item">
+    <div className={style}>
       <img
         src={data.tempUrl}
         alt={data.name}
@@ -168,17 +201,19 @@ const ListItem = ({ data }: { data: ImageListItem }) => {
       />
 
       <div className="relative pr-14">
-        <Tooltip content="Kaldır" color="danger">
-          <Button
-            color="danger"
-            variant="ghost"
-            className="absolute top-2/4 right-0 -translate-y-2/4"
-            onPress={removeItem}
-            isIconOnly
-          >
-            <FiTrash2 size={20} />
-          </Button>
-        </Tooltip>
+        {data.isUploaded === "inqueue" && (
+          <Tooltip content="Kaldır" color="danger">
+            <Button
+              color="danger"
+              variant="ghost"
+              className="absolute top-2/4 right-0 -translate-y-2/4"
+              onPress={removeItem}
+              isIconOnly
+            >
+              <FiTrash2 size={20} />
+            </Button>
+          </Tooltip>
+        )}
 
         <h3 className="text-lg font-semibold text-zinc-900" title={data.name}>
           {limitString(data.name, 35)}
@@ -196,16 +231,44 @@ export const ListView = () => {
 
   if (context === null) return;
 
-  const { isFileReading, imageStore } = context;
-  const fileCount = imageStore.getter.length;
+  const { loadingState, imageStore, maxFileSize, contextString } = context;
+
+  const imgStore = imageStore.getter;
+
+  const processingItems = imgStore.filter(
+    (item) => item.isUploaded !== "uploaded"
+  );
+
+  const uploaded = imgStore.filter((item) => item.isUploaded === "uploaded");
+
+  const uploadingNow =
+    imgStore.filter((item) => item.isUploaded === "uploading").length > 0;
 
   const resetList = () => {
-    context.imageStore.setter([]);
+    imageStore.setter([]);
   };
 
-  const handleUpload = () => {
-    alert(
-      "context structure will be edited according to fetch endpoint and body content pattern"
+  const handleUpload = async () => {
+    await Promise.all(
+      imgStore
+        .filter((item) => item.isUploaded === "inqueue")
+        .map(async (row) => {
+          const stateChangeHelper = (to: FileUploadState) => {
+            imageStore.setter((p) => {
+              const findNowUploading = {
+                ...(p.find((i) => i._id === row._id) as ImageListItem),
+              };
+              const getOldState = p.filter((i) => i._id !== row._id);
+              findNowUploading.isUploaded = to;
+              return [findNowUploading, ...getOldState];
+            });
+          };
+
+          stateChangeHelper("uploading");
+          await row[contextString]().finally(() =>
+            stateChangeHelper("uploaded")
+          );
+        })
     );
   };
 
@@ -213,28 +276,52 @@ export const ListView = () => {
     <Fragment>
       <div className="px-4 py-2 mb-2">
         <h1 className="flex items-center text-slate-700 text-2xl gap-3 mb-4">
-          <BiCollection /> {fileCount} resim yüklenmeye hazır.
+          <BiCollection />
+          {processingItems.length > 0
+            ? `${processingItems.length} resim yüklenmeye hazır.`
+            : `${uploaded.length} resim yüklendi.`}
         </h1>
         <p className="text-xs text-gray-500">
-          Tabloda en fazla 4MB boyutunda olan <code>jpeg</code> veya{" "}
+          Tabloda en fazla {maxFileSize}MB boyutunda olan <code>jpeg</code> veya{" "}
           <code>png</code> uzantılı resim dosyalarınızı bulabilirsiniz. Yeni bir
           resim seçmek için aşağıdaki alana resimlerinizi sürükleyebilir veya
           tıklayabilirsiniz: 'Yeni resim yükle'.
         </p>
       </div>
 
-      {isFileReading.getter ? (
+      {loadingState.getter === true ? (
         <LoadingView stackCount={3} />
       ) : (
         <Fragment>
-          {context.imageStore.getter.map((item, key) => (
+          {uploaded.length > 0 && (
+            <div className="border-b pb-3 mb-1">
+              <div className="relative">
+                <h5 className="imx-subheading">
+                  YÜKLENDİ{" "}
+                  <span className="font-mono">({uploaded.length})</span>
+                </h5>
+                <span className="imx-line" />
+              </div>
+
+              {uploaded.map((item, key) => (
+                <ListItem data={item} key={key} />
+              ))}
+            </div>
+          )}
+          {processingItems.map((item, key) => (
             <ListItem data={item} key={key} />
           ))}
-          <AddMultipleFile />
+          <div className={uploadingNow ? "imx-disable" : ""}>
+            <AddMultipleFile />
+          </div>
         </Fragment>
       )}
 
-      <div className="grid grid-cols-2 gap-4 mt-2 mb-4">
+      <div
+        className={`grid md:grid-cols-2 gap-4 mt-2 mb-4 transition-opacity ${
+          uploadingNow ? "imx-disable" : ""
+        }`}
+      >
         <Button
           color="danger"
           onPress={resetList}

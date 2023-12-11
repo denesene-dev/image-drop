@@ -5,7 +5,7 @@
 @tailwind utilities;
 
 .wrapper {
-    @apply max-w-4xl mx-auto mt-20;
+    @apply max-w-xl mx-auto mt-20;
 }
 
 .wrapper > * {
@@ -18,5 +18,21 @@ code {
 }
 
 .list-item {
-    @apply grid grid-cols-[75px_1fr] gap-6 items-center py-4 px-2;
+    @apply grid grid-cols-[75px_1fr] gap-6 items-center py-4 px-2 transition-all rounded-xl my-2;
+}
+
+.list-item.fetching {
+    @apply scale-95 opacity-40 pointer-events-none select-none;
+}
+
+.imx-subheading {
+    @apply px-3 text-xs tracking-widest font-bold text-stone-800 bg-white relative z-10 inline-block;
+}
+
+.imx-line {
+    @apply w-full absolute top-1/2 -translate-y-2/4 left-0 h-[1px] bg-gray-300;
+}
+
+.imx-disable {
+    @apply pointer-events-none select-none opacity-40;
 }
